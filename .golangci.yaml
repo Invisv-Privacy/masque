@@ -1,0 +1,14 @@
+run:
+  tests: true
+  go: ""
+  modules-download-mode: "readonly"
+  skip-cache: true
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - gosimple
+    - ineffassign
+    - govet
+    - unused
