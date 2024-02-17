@@ -1,5 +1,8 @@
 # An IETF MASQUE implementation in Go
 
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/invisv-privacy/masque)](https://pkg.go.dev/badge/github.com/invisv-privacy/masque)
+![Build Status](https://github.com/invisv-privacy/masque/actions/workflows/build.yaml/badge.svg?branch=main)
+
 ## What is INVISV masque?
 
 INVISV **masque** is an implementation of the [IETF MASQUE](https://datatracker.ietf.org/wg/masque/about/) tunneling protocol, written in Go. INVISV **masque** provides the client-side functionality needed for running a [Multi-Party Relay](https://invisv.com/articles/relay.html) service to protect users' network privacy.
