@@ -1,6 +1,6 @@
 # An IETF MASQUE implementation in Go
 
-[![PkgGoDev](https://pkg.go.dev/badge/github.com/invisv-privacy/masque)](https://pkg.go.dev/badge/github.com/invisv-privacy/masque)
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/invisv-privacy/masque)](https://pkg.go.dev/github.com/invisv-privacy/masque)
 ![Build Status](https://github.com/invisv-privacy/masque/actions/workflows/build.yaml/badge.svg?branch=main)
 
 ## What is INVISV masque?
