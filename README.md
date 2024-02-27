@@ -51,3 +51,104 @@ $ curl -v --proxy http://localhost:32190  ipinfo.io/ip
 * Connection #0 to host localhost left intact
 146.75.153.247
 ```
+
+## Testing
+
+We have automated tests which utilize an h2o container that we can leverage as the MASQUE target.
+
+They can be run by simply using go's test utility:
+```
+$ go test -v ./...
+```
+
+This will automatically spin up the h2o container, configure it as our MASQUE client's proxy target, and then use that for testing.
+
+Because this is all docker/docker-compose based it's trivial to spin up the h2o docker container for manual testing/evaluation.
+
+The h2o service listens on 8081 for http connections and 8444 for https.
+
+First spin up the h2o docker container in the background:
+```
+$ docker-compose up -d
+```
+
+You can check that it's running by querying the `/status` endpoint:
+```
+$ curl -I http://localhost:8081/status
+HTTP/1.1 200 OK
+Connection: keep-alive
+Content-Length: 6049
+Server: h2o/2.3.0-DEV@123f5e2b6
+cache-control: no-cache
+content-type: text/html; charset=utf-8
+last-modified: Tue, 20 Feb 2024 01:02:58 GMT
+etag: "65d3fa42-17a1"
+accept-ranges: bytes
+
+$ curl --cacert ./testdata/h2o/server.crt -I https://localhost:8444/status
+HTTP/2 200
+server: h2o/2.3.0-DEV@123f5e2b6
+cache-control: no-cache
+content-type: text/html; charset=utf-8
+last-modified: Tue, 20 Feb 2024 01:02:58 GMT
+etag: "65d3fa42-17a1"
+accept-ranges: bytes
+content-length: 6049
+```
+
+The h2o service is running an http CONNECT proxy so you can use curl with it directly as a test.
+
+Using https:
+```
+$ curl --proxy-cacert ./testdata/h2o/server.crt --proxy https://localhost:8444 -I  https://ipinfo.io
+HTTP/1.1 200 OK
+Connection: close
+Server: h2o/2.3.0-DEV@123f5e2b6
+
+HTTP/2 200
+server: nginx/1.24.0
+date: Thu, 07 Mar 2024 19:28:24 GMT
+content-type: application/json; charset=utf-8
+content-length: 322
+```
+
+Using http:
+```
+$ curl --proxy http://localhost:8081 -I  https://ipinfo.io
+HTTP/1.1 200 OK
+Connection: close
+Server: h2o/2.3.0-DEV@123f5e2b6
+
+HTTP/2 200
+server: nginx/1.24.0
+date: Thu, 07 Mar 2024 19:29:29 GMT
+content-type: application/json; charset=utf-8
+content-length: 322
+```
+
+If for example we wanted to try out the relay http proxy we could start it up targeting the h2o container:
+```
+$ go run ./example/relay-http-proxy -invisvRelay localhost -invisvRelayPort 8444  -token fake-token -verbose=true -certDataFile ./testdata/h2o/server.crt
+```
+
+In a new terminal, make a request using the proxy:
+```
+$ curl --proxy http://localhost:32190 -I  https://duckduckgo.com
+HTTP/1.1 200 OK
+Content-Length: 0
+
+HTTP/2 200
+server: nginx
+date: Tue, 27 Feb 2024 21:25:13 GMT
+content-type: text/html; charset=UTF-8
+content-length: 115553
+vary: Accept-Encoding
+```
+🎉🎉🎉🎉🎉🎉🎉🎉🎉🎉
+
+Programatically, we'd use the address `localhost:8444` as our `ClientConfig.ProxyAddr`.
+
+Don't forget to stop the docker container afterwards:
+```
+$ docker-compose down
+```
