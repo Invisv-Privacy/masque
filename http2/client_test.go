@@ -12,13 +12,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"path"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/invisv-privacy/masque/internal/testutils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tc "github.com/testcontainers/testcontainers-go/modules/compose"
@@ -27,12 +25,6 @@ import (
 )
 
 const h2oServiceName string = "h2o"
-
-func RootDir() string {
-	_, b, _, _ := runtime.Caller(0)
-	d := path.Join(path.Dir(b))
-	return filepath.Dir(d)
-}
 
 type NetConnWrapper struct {
 	*Conn
@@ -94,7 +86,7 @@ func TestSimpleClientRequest(t *testing.T) {
 
 	// Start the h2o docker container
 	identifier := tc.StackIdentifier("h2o_test")
-	composeFile := fmt.Sprintf("%s/docker-compose.yml", RootDir())
+	composeFile := fmt.Sprintf("%s/docker-compose.yml", testutils.RootDir())
 	compose, err := tc.NewDockerComposeWith(tc.WithStackFiles(composeFile), identifier)
 	require.NoError(t, err, "NewDockerComposeAPIWith()")
 
@@ -131,7 +123,7 @@ func TestSimpleClientRequest(t *testing.T) {
 	log.Printf("container: %+v", container)
 
 	// Now configure and start the MASQUE client
-	certDataFile := fmt.Sprintf("%s/testdata/h2o/server.crt", RootDir())
+	certDataFile := fmt.Sprintf("%s/testdata/h2o/server.crt", testutils.RootDir())
 	certData, err := os.ReadFile(certDataFile)
 	require.NoError(t, err, "Reading certData")
 
