@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"context"
 	"crypto/tls"
-	"crypto/x509"
-	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +16,7 @@ import (
 	"time"
 
 	"github.com/invisv-privacy/masque"
+	"github.com/invisv-privacy/masque/internal/utils"
 	gohttp2 "golang.org/x/net/http2"
 	"inet.af/netaddr"
 )
@@ -317,26 +316,10 @@ func (c *Client) makeTLSDialer() *tls.Dialer {
 		// This codepath is for when we're pinning to a specific proxy certificate.
 		// In that case, what we care about is doing an exact match, not normal
 		// hierarchical cert verification.
-		block, _ := pem.Decode(c.certData)
-		if block == nil {
-			c.logger.Error("Error parsing certificate PEM")
-			return nil
-		}
-
-		cert, err := x509.ParseCertificate(block.Bytes)
+		certVerify, err := utils.TLSVerifyFunc(c.certData)
 		if err != nil {
-			c.logger.Error("Error parsing certificate", "err", err)
+			c.logger.Error("Error getting certVerify func", "err", err)
 			return nil
-		}
-
-		certVerify := func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-			for i := range rawCerts {
-				peerCert, err := x509.ParseCertificate(rawCerts[i])
-				if err == nil && cert.Equal(peerCert) {
-					return nil
-				}
-			}
-			return errors.New("no cert matches pinned cert")
 		}
 
 		t.Config = &tls.Config{InsecureSkipVerify: true, VerifyPeerCertificate: certVerify}
