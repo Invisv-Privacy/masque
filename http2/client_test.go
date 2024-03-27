@@ -26,28 +26,72 @@ import (
 
 const h2oServiceName string = "h2o"
 
-type NetConnWrapper struct {
-	*Conn
-}
+var logger *slog.Logger
+var containerGateway string
+var stack tc.ComposeStack
 
-func (r *NetConnWrapper) LocalAddr() net.Addr {
-	return nil
-}
+func TestMain(m *testing.M) {
+	level := slog.LevelDebug
+	logger = slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: level,
+	}))
+	slog.SetDefault(logger)
 
-func (r *NetConnWrapper) RemoteAddr() net.Addr {
-	return nil
-}
+	// Start the h2o docker container
+	identifier := tc.StackIdentifier("h2o_test")
+	composeFile := fmt.Sprintf("%s/docker-compose.yml", testutils.RootDir())
+	compose, err := tc.NewDockerComposeWith(tc.WithStackFiles(composeFile), identifier)
+	if err != nil {
+		log.Fatalf("error in NewDockerComposeAPIWith: %v", err)
+	}
 
-func (r *NetConnWrapper) SetDeadline(t time.Time) error {
-	return nil
-}
+	defer func() {
+		if err := compose.Down(
+			context.Background(),
+			tc.RemoveOrphans(true),
+			tc.RemoveImagesLocal,
+		); err != nil {
+			log.Fatalf("error in compose.Down: %v", err)
+		}
+	}()
 
-func (r *NetConnWrapper) SetReadDeadline(t time.Time) error {
-	return nil
-}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-func (r *NetConnWrapper) SetWriteDeadline(t time.Time) error {
-	return nil
+	stack = compose.WaitForService(h2oServiceName,
+		// The h2o conf provides a /status endpoint listening on
+		// non-TLS port 8081
+		wait.
+			NewHTTPStrategy("/status").
+			WithPort("8081/tcp").
+			WithStartupTimeout(10*time.Second),
+	)
+
+	if err := stack.Up(ctx, tc.Wait(true), tc.RunServices("h2o")); err != nil {
+		log.Fatalf("error in compose.Up(): %v", err)
+	}
+
+	container, err := stack.ServiceContainer(ctx, h2oServiceName)
+	if err != nil {
+		log.Fatalf("error in stack.ServiceContainer: %v", err)
+	}
+
+	logger.Info("compose up", "services", stack.Services(), "container", container)
+
+	// Kind of awkward network info parsing here.
+	// We need the container's gateway IP because that _should_ be the address the host can ListenUDP on where the container can access it.
+	containerIPs, err := container.ContainerIPs(ctx)
+	if err != nil {
+		log.Fatalf("error in container.ContainerIPs: %v", err)
+	}
+
+	containerIP := containerIPs[0]
+	containerIPSplit := strings.Split(containerIP, ".")
+	containerNet := strings.Join(containerIPSplit[:len(containerIPSplit)-1], ".")
+
+	containerGateway = fmt.Sprintf("%v.1", containerNet)
+
+	m.Run()
 }
 
 func TestSimpleClientRequest(t *testing.T) {
@@ -84,44 +128,6 @@ func TestSimpleClientRequest(t *testing.T) {
 	urlSplit := strings.Split(ts.URL, ":")
 	port := urlSplit[len(urlSplit)-1]
 
-	// Start the h2o docker container
-	identifier := tc.StackIdentifier("h2o_test")
-	composeFile := fmt.Sprintf("%s/docker-compose.yml", testutils.RootDir())
-	compose, err := tc.NewDockerComposeWith(tc.WithStackFiles(composeFile), identifier)
-	require.NoError(t, err, "NewDockerComposeAPIWith()")
-
-	t.Cleanup(func() {
-		require.NoError(t,
-			compose.Down(
-				context.Background(),
-				tc.RemoveOrphans(true),
-				tc.RemoveImagesLocal,
-			), "compose.Down()")
-	})
-
-	ctx, cancel := context.WithCancel(context.Background())
-	t.Cleanup(cancel)
-
-	stack := compose.WaitForService(h2oServiceName,
-		// The h2o conf provides a /status endpoint listening on
-		// non-TLS port 8081
-		wait.
-			NewHTTPStrategy("/status").
-			WithPort("8081/tcp").
-			WithStartupTimeout(10*time.Second),
-	)
-
-	err = stack.Up(ctx, tc.Wait(true))
-
-	require.NoError(t, err, "compose.Up()")
-
-	log.Printf("services: %+v", stack.Services())
-
-	container, err := stack.ServiceContainer(ctx, h2oServiceName)
-	require.NoError(t, err, "fetch ServiceContainer")
-
-	log.Printf("container: %+v", container)
-
 	// Now configure and start the MASQUE client
 	certDataFile := fmt.Sprintf("%s/testdata/h2o/server.crt", testutils.RootDir())
 	certData, err := os.ReadFile(certDataFile)
@@ -140,13 +146,12 @@ func TestSimpleClientRequest(t *testing.T) {
 	err = c.ConnectToProxy()
 	require.NoError(t, err, "ConnectToProxy")
 
-	// host.docker.internal is a docker specific host mapping for the h2o container that resolves to our localhost
-	dockerHostUrl := fmt.Sprintf("host.docker.internal:%v", port)
-	conn, err := c.CreateTCPStream(dockerHostUrl)
+	dockerHostURL := fmt.Sprintf("%v:%v", containerGateway, port)
+	conn, err := c.CreateTCPStream(dockerHostURL)
 	require.NoError(t, err, "CreateTCPStream")
 	defer conn.Close()
 
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%v", dockerHostUrl), nil)
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%v", dockerHostURL), nil)
 	require.NoError(t, err, "http.NewRequest")
 
 	certpool := x509.NewCertPool()
@@ -158,7 +163,7 @@ func TestSimpleClientRequest(t *testing.T) {
 			ServerName: "example.com",
 			NextProtos: ts.TLS.NextProtos,
 		}
-		tlsClient := tls.Client(&NetConnWrapper{conn}, tlsConf)
+		tlsClient := tls.Client(&testutils.NetConnWrapper{ReadWriteCloser: conn}, tlsConf)
 		err = tlsClient.Handshake()
 		return tlsClient, err
 	}
