@@ -137,7 +137,7 @@ func (c *Client) getReadyH2ClientConnOpt(addr string, lowlatency bool) (*gohttp2
 	for i := 0; i < len(c.h2Conns); i++ {
 		cc := c.h2Conns[i]
 		state := cc.State()
-		if state.Closed {
+		if state.Closed || state.Closing {
 			c.h2Conns = append(c.h2Conns[:i], c.h2Conns[i+1:]...)
 			i--
 			continue
