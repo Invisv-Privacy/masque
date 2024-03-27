@@ -94,7 +94,7 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-func TestSimpleClientRequest(t *testing.T) {
+func TestCreateTCPStream(t *testing.T) {
 	level := slog.LevelDebug
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: level,
@@ -186,4 +186,63 @@ func TestSimpleClientRequest(t *testing.T) {
 
 	assert.Equal(t, 200, response.StatusCode, "Should receive 200 response")
 	assert.Equal(t, expectedResponse, string(data), "Should receive expected body")
+}
+
+func TestCreateUDPStream(t *testing.T) {
+	expectedRequest := "test udp request data\n"
+	expectedResponse := "test udp response data\n"
+
+	// Start target udp server
+	// We want to listen on the gateway IP so the proxy container can access it.
+	conn, err := net.ListenUDP("udp", &net.UDPAddr{IP: net.ParseIP(containerGateway)})
+	require.NoError(t, err, "net.ListenUDP")
+
+	go func() {
+		var buf [512]byte
+		n, addr, err := conn.ReadFromUDP(buf[0:])
+		require.NoError(t, err, "ReadFromUDP")
+		assert.Equal(t, expectedRequest, string(buf[0:n]), "Should receive correct UDP request")
+
+		logger.Info("ReadFromUDP", "buf", buf, "addr", addr)
+
+		// Write back the message over UPD
+		_, err = conn.WriteToUDP([]byte(expectedResponse), addr)
+		require.NoError(t, err, "conn.WriteToUDP")
+	}()
+
+	udpListenAddr := conn.LocalAddr()
+
+	urlSplit := strings.Split(udpListenAddr.String(), ":")
+	udpListenPort := urlSplit[len(urlSplit)-1]
+
+	// Now configure and start the MASQUE client
+	certDataFile := fmt.Sprintf("%s/testdata/h2o/server.crt", testutils.RootDir())
+	certData, err := os.ReadFile(certDataFile)
+	require.NoError(t, err, "Reading certData")
+
+	config := ClientConfig{
+		ProxyAddr: "localhost:8444",
+		// The h2o server we're using doesn't require an actual token so this can be anything
+		AuthToken: "fake-token",
+		Logger:    logger,
+		CertData:  certData,
+	}
+
+	c := NewClient(config)
+
+	dockerHostURL := fmt.Sprintf("%v:%v", containerGateway, udpListenPort)
+
+	udpConn, err := c.CreateUDPStream(dockerHostURL)
+	require.NoError(t, err, "CreateUDPStream")
+	defer udpConn.Close()
+
+	_, err = udpConn.Write([]byte(expectedRequest))
+	require.NoError(t, err, "udpConn.Write")
+
+	var buf [512]byte
+	n, err := udpConn.Read(buf[0:])
+	require.NoError(t, err, "udpConn.Read")
+
+	assert.Equal(t, expectedResponse, string(buf[0:n]), "Should receive correct UDP response")
+	logger.Info("got response", "buf", buf)
 }
