@@ -15,7 +15,7 @@ The IETF MASQUE protocol functions as a generalization of the HTTP CONNECT metho
 
 INVISV **masque** has already been in public use in INVISV's [Relay](https://invisv.com/relay/) and [Booth](https://booth.video/) services for over a year. This repository is its first release as an open BSD-licensed codebase.
 
-As of February 2024, this open implementation currently uses HTTP/2 for MASQUE tunneling. With appropriate changes to [quic-go](https://github.com/quic-go/quic-go), which we will be making available in the future, this implementation will also support HTTP/3 for MASQUE tunneling.
+This implementation offers both HTTP/2 and HTTP/3 for MASQUE tunneling.
 
 ## Example application: Relay HTTP Proxy
 
