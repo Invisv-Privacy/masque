@@ -352,6 +352,7 @@ func (c *Client) dialProxyViaH2() (*gohttp2.Transport, error) {
 		DisableCompression: true,
 		WriteByteTimeout:   time.Second * 3,
 		ReadIdleTimeout:    time.Second * 3,
+		PingTimeout:        time.Second * 2,
 	}
 	return tr, nil
 }
