@@ -24,7 +24,8 @@ import (
 	"sync"
 	"syscall"
 
-	masque "github.com/invisv-privacy/masque/http2"
+	masque "github.com/invisv-privacy/masque"
+	masqueH2 "github.com/invisv-privacy/masque/http2"
 )
 
 // Command line flags
@@ -38,28 +39,7 @@ var insecure *bool        // Ignore check of Relay server certificate?
 var certDataFile *string  // File containing cert data for TLS cert pinning
 var verbose *bool         // Whether to log at DEBUG level
 
-var relayClient *masque.Client
-
-// List of destination ports Fastly's Proxy B blocks
-// Only exception is UDP port 53.
-var disallowedPorts []uint16 = []uint16{0, 19, 25, 123, 161, 162, 179, 1900, 3283, 5353, 11211}
-
-const (
-	MAX_DISALLOWED_PORT_NUM = 11211
-)
-
-var disallowedPortsBitset [MAX_DISALLOWED_PORT_NUM + 1]bool
-
-func initDisallowedPortsBitset() {
-	for _, port := range disallowedPorts {
-		disallowedPortsBitset[port] = true
-	}
-}
-
-// isDisallowedPort returns true if the given destination port number is a value that will be rejected by Fastly.
-func isDisallowedPort(dport uint16) bool {
-	return dport <= MAX_DISALLOWED_PORT_NUM && disallowedPortsBitset[dport]
-}
+var relayClient *masqueH2.Client
 
 func transfer(destination io.WriteCloser, source io.ReadCloser, wg *sync.WaitGroup, logger *slog.Logger) {
 	defer wg.Done()
@@ -76,7 +56,7 @@ func transfer(destination io.WriteCloser, source io.ReadCloser, wg *sync.WaitGro
 }
 
 // handleConnectMasque handles a CONNECT request to the proxy and returns the connected stream upon success.
-func handleConnectMasque(c net.Conn, req *http.Request, logger *slog.Logger) *masque.Conn {
+func handleConnectMasque(c net.Conn, req *http.Request, logger *slog.Logger) *masqueH2.Conn {
 	logger = logger.With("req", req)
 	disallowedRes := &http.Response{
 		StatusCode: http.StatusUnauthorized,
@@ -106,7 +86,7 @@ func handleConnectMasque(c net.Conn, req *http.Request, logger *slog.Logger) *ma
 		return nil
 	}
 
-	if isDisallowedPort(uint16(portInt)) {
+	if masque.IsDisallowedPort(uint16(portInt)) {
 		logger.Error("Disallowed port", "port", port)
 		err := disallowedRes.Write(c)
 		if err != nil {
@@ -222,8 +202,8 @@ func handleReq(c net.Conn, logger *slog.Logger) {
 	}
 }
 
-func connectToRelay(certData []byte, logger *slog.Logger) (*masque.Client, error) {
-	config := masque.ClientConfig{
+func connectToRelay(certData []byte, logger *slog.Logger) (*masqueH2.Client, error) {
+	config := masqueH2.ClientConfig{
 		ProxyAddr:  fmt.Sprintf("%v:%v", *invisvRelay, *invisvRelayPort),
 		AuthToken:  *token,
 		Logger:     logger,
@@ -231,7 +211,7 @@ func connectToRelay(certData []byte, logger *slog.Logger) (*masque.Client, error
 		IgnoreCert: *insecure,
 	}
 
-	c := masque.NewClient(config)
+	c := masqueH2.NewClient(config)
 
 	err := c.ConnectToProxy()
 	if err != nil {
@@ -288,8 +268,6 @@ func main() {
 		Level: level,
 	}))
 	slog.SetDefault(logger)
-
-	initDisallowedPortsBitset()
 
 	host := fmt.Sprintf("localhost:%d", *listenPort)
 	l, err := net.Listen("tcp", host)

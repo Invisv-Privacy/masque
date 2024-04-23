@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"log"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -242,14 +243,17 @@ func (c *Client) datagramReceiveLoop(conn quic.Connection) {
 			// TODO: check this is correct context
 			datagram, err := conn.ReceiveDatagram(c.datagramCtx)
 			if err != nil {
+				c.logger.Error("Error in conn.ReceiveDatagram", "err", err)
 				c.receiveLoopError <- err
 				continue
 			}
+			c.logger.Debug("Received Datagram", "datagram", datagram)
 
 			reader := bytes.NewReader(datagram)
 			r := quicvarint.NewReader(reader)
 			datagramID, err := quicvarint.Read(r)
 			if err != nil {
+				c.logger.Error("Error in quicvarint.Read", "err", err)
 				c.receiveLoopError <- err
 				continue
 			}
@@ -257,6 +261,7 @@ func (c *Client) datagramReceiveLoop(conn quic.Connection) {
 			t, ok := c.datagramStreams.Load(datagramID)
 			if !ok || t == nil {
 				// TODO: Log mystery packet counter (datagram flow may have been closed already)
+				c.logger.Error("Not found in datagramStreams", "datagramID", datagramID)
 				continue
 			}
 			targetStream, ok := t.(*DatagramStream)
@@ -556,6 +561,7 @@ func (s *DatagramStream) Read(b []byte) (int, error) {
 	select {
 	case message, ok := <-s.recvQueue:
 		if ok {
+			log.Printf("message received: %v\n", message)
 			copied := copy(b, message)
 			return copied, nil
 		} else {
