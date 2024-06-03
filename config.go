@@ -1,3 +1,4 @@
+// Package masque implements a client-side IETF MASQUE protocol stack.
 package masque
 
 import "time"

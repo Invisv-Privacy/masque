@@ -33,8 +33,8 @@ type connCleanupFunc func(bool, uint64)
 // and a pair of I/O handles, namely |IoInc| and |IoOut|, designed for
 // sending and receiving data via the proxied TCP/UDP connection.
 //
-// For CONNECT-UDP using HTTP/1.1, the |transport| field keeps track of the unique
-// HTTP/1.1 TLS connection to the destination proxy server.
+// For CONNECT-UDP using HTTP/1.1, the |transport| field keeps track of the
+// unique HTTP/1.1 TLS connection to the destination proxy server.
 //
 // The |Alive| field indicates the liveness of the underlying CONNECT-UDP HTTP connection.
 // Users should only send data through this proxied connection if |Alive| is true.

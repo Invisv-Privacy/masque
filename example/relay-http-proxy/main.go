@@ -1,10 +1,8 @@
-/*
-relay-http-proxy is a sample application that uses the INVISV IETF MASQUE
-stack.  It listens on a local port, presenting an ordinary HTTP proxy
-interface, and sends requests it receives to the destination host via the
-MASQUE relay server, such as the one run by INVISV. In effect, this tunnels
-ordinary HTTP via MASQUE (which is itself an extension to HTTP).
-*/
+// relay-http-proxy is a sample application that uses the INVISV IETF MASQUE
+// stack.  It listens on a local port, presenting an ordinary HTTP proxy
+// interface, and sends requests it receives to the destination host via the
+// MASQUE relay server, such as the one run by INVISV. In effect, this tunnels
+// ordinary HTTP via MASQUE (which is itself an extension to HTTP).
 package main
 
 import (

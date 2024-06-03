@@ -20,6 +20,7 @@ import (
 )
 
 // A port list to be used as a default if one is not provided via a file.
+// These are the ports that preproxy should listen on.
 var PortListBase = []int{
 	80, 443, 5349, 7880,
 }
@@ -33,6 +34,7 @@ var PortListBaseUdp = []int{
 var insecure *bool
 
 // This port range is to allow a large number of UDP ports to be added.
+// This is useful when a client may use an unknown high port number.
 const PortRangeUdpMin = 50000
 const PortRangeUdpMax = 60000
 
@@ -53,8 +55,10 @@ func defaultPortList() ([]int, []int) {
 	return portListTCP, portListUDP
 }
 
-// Load the provided port file. Returns a list of TCP and UDP ports to forward.
-// The format of the file is tcp:port_number or udp:port_number on individual lines.
+// loadPortFile loads the provided port file. It returns a list of TCP and UDP
+// ports to forward.  The format of the file is tcp:port_number or
+// udp:port_number on individual lines.
+//
 // TODO: Support port ranges in the form of udp:port_start-port_end
 func loadPortFile(portFile string) ([]int, []int, error) {
 	portList, err := os.ReadFile(portFile)
@@ -91,10 +95,10 @@ func loadPortFile(portFile string) ([]int, []int, error) {
 	return portListTCP, portListUDP, nil
 }
 
-// Preproxy executable. Starts running the preproxy on localaddr by tunneling connections thru the given proxyaddr
+// Starts running the preproxy on localaddr by tunneling connections thru the given proxyaddr
 // to the final destination targetServer for the ports configured (either by default or via the portconf file).
 func main() {
-	invisvRelay := flag.String("invisvRelay", "fastest.pgpp.stations.invisv.com", "Invisv Relay Server")
+	invisvRelay := flag.String("invisvRelay", "", "Invisv Relay Server")
 	invisvRelayPort := flag.String("invisvRelayPort", "443", "Invisv Relay Server Port")
 	targetServer := flag.String("targetServer", "", "Target server to proxy all connections to")
 
@@ -294,10 +298,12 @@ func Transfer(dst io.WriteCloser, src io.ReadCloser) {
 	}
 }
 
-// A connFailFunc is called when a Relay stream creation fails. It is given the connection being proxied so it can reply to the client if needed.
+// A connFailFunc is called when a Relay stream creation fails. It is given the
+// connection being proxied so it can reply to the client if needed.
 type connFailFunc func(c net.Conn)
 
-// HandleConnectMasque creates a new TCP or UDP stream via the relayClient and returns the connected stream upon success.
+// HandleConnectMasque creates a new TCP or UDP stream via the relayClient and
+// returns the connected stream upon success.
 func HandleConnectMasque(relayClient *masqueH3.Client, c net.Conn, target string, isTcp bool, fail connFailFunc) (io.ReadWriteCloser, error) {
 	_, port, err := net.SplitHostPort(target)
 	if err != nil {
