@@ -8,7 +8,7 @@ import (
 )
 
 // TLSVerifyFunc takes a cert data byte slice and returns a function that can be
-// passed to the tls.Config.VerifyPeerCertificate for pinning
+// passed to the tls.Config.VerifyPeerCertificate for pinning.
 func TLSVerifyFunc(certData []byte) (func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error, error) {
 	block, _ := pem.Decode(certData)
 	if block == nil {

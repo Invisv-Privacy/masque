@@ -74,6 +74,7 @@ type Client struct {
 // ClientConfig is options to give when creating a new Client with NewClient().
 // Note that sane defaults are used when value is not provided/initialized.
 type ClientConfig struct {
+	// The proxy to connect to in host:port format.
 	ProxyAddr string
 
 	// Maximium number of incoming streams. Typically not an issue, as
@@ -108,8 +109,10 @@ type ClientConfig struct {
 // DatagramStream is an object for Proxied UDP Streams that implements I/O functionality.
 // This object contains information necessary to communicate with the Client
 // message receiver loop.
+//
 // Read/Write on a DatagramStream works as expected, though note it will use
 // Datagram framing semantics (each block is an individual UDP packet).
+//
 // It is important that the caller DO NOT close the quic.Stream OR the quic.Connection
 // object that is given inside of the struct.
 type DatagramStream struct {
@@ -337,7 +340,8 @@ func (c *Client) stopReceiveLoop() error {
 	return nil
 }
 
-// Gets a new H3_DATAGRAM Flow ID to be used with a UDP stream.
+// getNewDatagramID gets a new H3_DATAGRAM Flow ID to be used with a UDP
+// stream.
 func (c *Client) getNewDatagramID() uint64 {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -573,7 +577,7 @@ func (s *DatagramStream) Read(b []byte) (int, error) {
 
 }
 
-// Writes to a datagram stream. May block if the stream buffer is full.
+// Write writes to a datagram stream. May block if the stream buffer is full.
 // Note that this function requires prepending 1 to 9 bytes to send the datagram:
 // this means that the MTU size of the connection will be below what the caller
 // may expect.

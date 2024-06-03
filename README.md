@@ -2,6 +2,7 @@
 
 [![PkgGoDev](https://pkg.go.dev/badge/github.com/invisv-privacy/masque)](https://pkg.go.dev/github.com/invisv-privacy/masque)
 ![Build Status](https://github.com/invisv-privacy/masque/actions/workflows/build.yaml/badge.svg?branch=main)
+[![godocs.io](https://godocs.io/github.com/invisv-privacy/masque?status.svg)](https://godocs.io/github.com/invisv-privacy/masque)
 
 ## What is INVISV masque?
 
@@ -51,6 +52,10 @@ $ curl -v --proxy http://localhost:32190  ipinfo.io/ip
 * Connection #0 to host localhost left intact
 146.75.153.247
 ```
+
+## Example application: Preproxy
+
+In addition to the Relay HTTP Proxy sample application, we have included an application we call the "preproxy". This performs a combination of functions: reverse proxying of inbound traffic and tunneling of that traffic via a (multi-hop) MASQUE tunnel to a given destination. This enables use of unmodified applications with MASQUE tunnels, where the remote client network stack is potentially unaware of the MASQUE tunnel yet wishes to use a MASQUE to reach a destination. See the documentation of preproxy for details.
 
 ## Testing
 

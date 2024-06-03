@@ -31,11 +31,14 @@ const (
 // Client is a MASQUE HTTP/2 client that supports HTTP CONNECT and CONNECT-UDP.
 // All CONNECT requests are multiplexed using a HTTP/2 transport.
 // Each CONNECT-UDP request is performed in HTTP/1.1 and sent individually
-// via its own TLS connection. Any CONNECT or CONNECT-UDP requests that need HTTP/3 should not directly use this.
+// via its own TLS connection. Any CONNECT or CONNECT-UDP requests that
+// need HTTP/3 should not directly use this.
 //
 // The tlsTimeout setting determines the duration the client waits when
 // attempting to create a new TLS connection to the proxy. An error is returned
 // if the connection is not ready to use within the specified tlsTimeout.
+//
+// prot if not nil should be called before connect.
 type Client struct {
 	proxyAddr       string
 	authToken       string
@@ -45,7 +48,7 @@ type Client struct {
 	tlsTimeout      time.Duration
 	tcpReqs         map[uint64]*Conn
 	udpReqs         map[uint64]*Conn
-	prot            SocketProtector // Call before connect
+	prot            SocketProtector
 	certData        []byte
 	makingSpare     bool
 	lowLatencyAddrs map[string]bool
@@ -54,6 +57,8 @@ type Client struct {
 	ignoreCert      bool
 }
 
+// ClientConfig is a configuration for a MASQUE client to be used to set
+// the configuration of a new Client to be created.
 type ClientConfig struct {
 	ProxyAddr       string
 	AuthToken       string
