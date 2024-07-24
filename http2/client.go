@@ -239,7 +239,7 @@ func (c *Client) CreateTCPStream(addr string) (*Conn, error) {
 			dst = "http://" + addr
 			authority = addr
 		} else {
-			url, err := url.Parse(addr)
+			parsedURL, err := url.Parse(addr)
 			if err != nil {
 				if addr[0] >= '0' && addr[0] <= '9' && strings.Contains(addr, ":") {
 					// Golang mis-parses FQDNs with leading digits, so check for basic format and pass.
@@ -248,7 +248,7 @@ func (c *Client) CreateTCPStream(addr string) (*Conn, error) {
 					return nil, errors.New("an invalid destination addr: not a IPPort or URL")
 				}
 			} else {
-				dst = url.String()
+				dst = parsedURL.String()
 			}
 			authority = dst
 		}
