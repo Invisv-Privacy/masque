@@ -395,22 +395,22 @@ func (c *Client) dialProxyViaTLS() (net.Conn, error) {
 func StreamDataToDatagramChunk(payload []byte, l int) ([]byte, int) {
 	encode := make([]byte, 5)
 	encode[0] = 0x00
-	len := uint(l)
-	if len > 63 {
-		if len > 16383 {
-			encode[1] = 0x80 | uint8(len>>24) // 4-byte length encoding
-			encode[2] = uint8(len >> 16)
-			encode[3] = uint8(len >> 8)
-			encode[4] = uint8(len)
+	dataLength := uint(l)
+	if dataLength > 63 {
+		if dataLength > 16383 {
+			encode[1] = 0x80 | uint8(dataLength>>24) // 4-byte length encoding
+			encode[2] = uint8(dataLength >> 16)
+			encode[3] = uint8(dataLength >> 8)
+			encode[4] = uint8(dataLength)
 			encode = append(encode[:4:4], payload...)
 			return encode, l + 5
 		}
-		encode[1] = 0x40 | uint8(len>>8) // 2-byte length encoding
-		encode[2] = uint8(len)
+		encode[1] = 0x40 | uint8(dataLength>>8) // 2-byte length encoding
+		encode[2] = uint8(dataLength)
 		encode = append(encode[:3:3], payload...)
 		return encode, l + 3
 	}
-	encode[1] = uint8(len) // 1-byte length encoding
+	encode[1] = uint8(dataLength) // 1-byte length encoding
 	encode = append(encode[:2:2], payload...)
 	return encode, l + 2
 }
@@ -418,28 +418,28 @@ func StreamDataToDatagramChunk(payload []byte, l int) ([]byte, int) {
 // datagramChunkToStreamData converts an encoded datagram chunk into a UDP raw byte slice.
 // The input parameters are the CONNECT-UDP datagram chunk (chunk) and the payload length (len).
 // It returns the decoded data in a byte slice and its total length.
-func (c *Client) datagramChunkToStreamData(chunk []byte, len int) ([]byte, int) {
-	if len < 2 || chunk[0] != 0 {
+func (c *Client) datagramChunkToStreamData(chunk []byte, chunkLength int) ([]byte, int) {
+	if chunkLength < 2 || chunk[0] != 0 {
 		return []byte{}, 0
 	}
 	v := chunk[1]
 	if v&byte(0b11000000) == 0 { // 1-byte length encoding
 		decode := chunk[2:]
-		return decode, len - 2
+		return decode, chunkLength - 2
 	}
 	if v&byte(0b11000000) == 0x40 { // 2-byte length encoding
 		decode := chunk[3:]
-		return decode, len - 3
+		return decode, chunkLength - 3
 	}
 	if v&byte(0b11000000) == 0x80 { // 4-byte length encoding
 		decode := chunk[4:]
-		return decode, len - 4
+		return decode, chunkLength - 4
 	}
 	if v&byte(0b11000000) == 0xc0 { // 8-byte length encoding
 		decode := chunk[9:]
-		return decode, len - 9
+		return decode, chunkLength - 9
 	}
-	c.logger.Error("Datagram chunk encoding error", "chunk", chunk, "len", len)
+	c.logger.Error("Datagram chunk encoding error", "chunk", chunk, "len", chunkLength)
 	return []byte{}, 0
 }
 
