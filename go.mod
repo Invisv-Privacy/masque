@@ -3,7 +3,7 @@ module github.com/invisv-privacy/masque
 go 1.21.6
 
 require (
-	github.com/quic-go/quic-go v0.41.0
+	github.com/quic-go/quic-go v0.42.0
 	github.com/stretchr/testify v1.8.4
 	github.com/testcontainers/testcontainers-go v0.28.0
 	github.com/testcontainers/testcontainers-go/modules/compose v0.28.0
@@ -56,7 +56,6 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/emicklei/go-restful/v3 v3.10.1 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsevents v0.1.1 // indirect
 	github.com/fvbommel/sortorder v1.0.2 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
@@ -177,7 +176,7 @@ require (
 	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/term v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	golang.org/x/time v0.3.0 // indirect
+	golang.org/x/time v0.5.0 // indirect
 	golang.org/x/tools v0.10.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/genproto v0.0.0-20230822172742-b8732ec3820d // indirect
@@ -201,6 +200,4 @@ require (
 	tags.cncf.io/container-device-interface v0.6.2 // indirect
 )
 
-replace github.com/quic-go/quic-go v0.41.0 => github.com/invisv-privacy/quic-go-upstream v0.0.0-20240308000449-eed58ed0b738
-
-// replace github.com/quic-go/quic-go v0.41.0 => ../quic-go
+replace github.com/quic-go/quic-go => github.com/Invisv-Privacy/quic-go-upstream v0.0.0-20240806201504-7cefe04aabf9
