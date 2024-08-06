@@ -115,7 +115,8 @@ func (c *Client) ConnectToProxy() error {
 
 // makeNewH2ClientConn must be called while c.mu is held.
 func (c *Client) makeNewH2ClientConn(addr string) (*gohttp2.ClientConn, error) {
-	netConn, err := c.h2Transport.DialTLS("tcp", addr, nil)
+	ctx, _ := makeTLSDialerContext(c.tlsTimeout)
+	netConn, err := c.h2Transport.DialTLSContext(ctx, "tcp", addr, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -348,9 +349,8 @@ func (c *Client) dialProxyViaH2() (*gohttp2.Transport, error) {
 	tr := &gohttp2.Transport{
 		// Note that h2 Transport will bypass |network|, |addr|, and |cfg| and
 		// return a default tls dialer to proxy w/ |proxyAddr|.
-		DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+		DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
 			t := c.makeTLSDialer()
-			ctx, _ := makeTLSDialerContext(c.tlsTimeout)
 			return t.DialContext(ctx, "tcp", c.proxyAddr)
 		},
 		AllowHTTP:          true,
