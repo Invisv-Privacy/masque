@@ -118,7 +118,7 @@ func TestCreateTCPStream(t *testing.T) {
 	}
 
 	// Swap out the default test server listener with our custom one listening on 0.0.0.0
-	ts.Listener.Close()
+	require.NoError(t, ts.Listener.Close(), "ts.Listener.Close()")
 	ts.Listener = l
 	ts.StartTLS()
 	defer ts.Close()
@@ -149,7 +149,9 @@ func TestCreateTCPStream(t *testing.T) {
 	dockerHostURL := fmt.Sprintf("%v:%v", containerGateway, port)
 	conn, err := c.CreateTCPStream(dockerHostURL)
 	require.NoError(t, err, "CreateTCPStream")
-	defer conn.Close()
+	defer func() {
+		require.NoError(t, conn.Close(), "conn.Close()")
+	}()
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%v", dockerHostURL), nil)
 	require.NoError(t, err, "http.NewRequest")
@@ -178,7 +180,9 @@ func TestCreateTCPStream(t *testing.T) {
 	response, err := httpClient.Do(req)
 	require.NoError(t, err, "httpClient.Do")
 
-	defer response.Body.Close()
+	defer func() {
+		require.NoError(t, response.Body.Close(), "response.Body.Close()")
+	}()
 	data, err := io.ReadAll(response.Body)
 	require.NoError(t, err, "io.ReadAll response body")
 
@@ -234,7 +238,9 @@ func TestCreateUDPStream(t *testing.T) {
 
 	udpConn, err := c.CreateUDPStream(dockerHostURL)
 	require.NoError(t, err, "CreateUDPStream")
-	defer udpConn.Close()
+	defer func() {
+		require.NoError(t, udpConn.Close(), "udpConn.Close()")
+	}()
 
 	_, err = udpConn.Write([]byte(expectedRequest))
 	require.NoError(t, err, "udpConn.Write")

@@ -12,3 +12,11 @@ linters:
     - ineffassign
     - govet
     - unused
+
+issues:
+  include:
+    # Include Close() errcheck https://golangci-lint.run/usage/false-positives/#exc0001
+    - EXC0001
+  # Show all issues
+  max-issues-per-linter: 0
+  max-same-issues: 0

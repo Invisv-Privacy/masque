@@ -209,7 +209,10 @@ func main() {
 				masqueConn, err := HandleConnectMasque(relayClient, c, target, true, func(c net.Conn) {})
 				if err != nil {
 					logger.Error("Failed to open masque connection", "err", err)
-					c.Close()
+					if err := c.Close(); err != nil {
+						logger.Error("Failed to close masque connection", "err", err)
+					}
+
 				} else {
 					logger.Debug("Opened TCP masque connection for client", "c.LocalAddr", c.LocalAddr(), "c.RemoteAddr", c.RemoteAddr())
 					go Transfer(masqueConn, c)
@@ -254,7 +257,9 @@ func main() {
 								if err != nil {
 									logger.Error("Couldn't read from masque connection", "err", err)
 									delete(udpConns, addr.String())
-									masqueConn.Close()
+									if err := masqueConn.Close(); err != nil {
+										logger.Error("Failed to close masque connection", "err", err)
+									}
 									break
 								}
 								logger.Debug("Writing bytes to client over UDP", "n", n, "addr", addr)
@@ -262,7 +267,9 @@ func main() {
 								if err != nil {
 									logger.Error("Couldn't write to client connection", "err", err)
 									delete(udpConns, addr.String())
-									masqueConn.Close()
+									if err := masqueConn.Close(); err != nil {
+										logger.Error("Failed to close masque connection", "err", err)
+									}
 									break
 								}
 							}
@@ -290,8 +297,17 @@ func main() {
 
 // Transfer copies data from src to dst and closes both when done.
 func Transfer(dst io.WriteCloser, src io.ReadCloser) {
-	defer dst.Close()
-	defer src.Close()
+	defer func() {
+		if err := dst.Close(); err != nil {
+			logger.Error("Failed to close dst", "err", err)
+		}
+	}()
+
+	defer func() {
+		if err := src.Close(); err != nil {
+			logger.Error("Failed to close src", "err", err)
+		}
+	}()
 	_, err := io.Copy(dst, src)
 	if err != nil {
 		logger.Error("Failed to copy", "err", err)
@@ -309,7 +325,9 @@ func HandleConnectMasque(relayClient *masqueH3.Client, c net.Conn, target string
 	if err != nil {
 		logger.Error("Failed to split host and port", "err", err)
 		fail(c)
-		c.Close()
+		if err := c.Close(); err != nil {
+			logger.Error("Failed to close c", "err", err)
+		}
 		return nil, err
 	}
 
@@ -317,14 +335,18 @@ func HandleConnectMasque(relayClient *masqueH3.Client, c net.Conn, target string
 	if err != nil {
 		logger.Error("Failed to convert port to int", "err", err)
 		fail(c)
-		c.Close()
+		if err := c.Close(); err != nil {
+			logger.Error("Failed to close c", "err", err)
+		}
 		return nil, err
 	}
 
 	if masque.IsDisallowedPort(uint16(portInt)) {
 		logger.Error("Disallowed port", "port", port)
 		fail(c)
-		c.Close()
+		if err := c.Close(); err != nil {
+			logger.Error("Failed to close c", "err", err)
+		}
 		return nil, fmt.Errorf("Disallowed port: %s", port)
 	}
 
@@ -334,7 +356,9 @@ func HandleConnectMasque(relayClient *masqueH3.Client, c net.Conn, target string
 		if err != nil {
 			logger.Error("Failed to create TCP stream", "err", err)
 			fail(c)
-			c.Close()
+			if err := c.Close(); err != nil {
+				logger.Error("Failed to close c", "err", err)
+			}
 			return nil, err
 		}
 	} else {
@@ -342,7 +366,9 @@ func HandleConnectMasque(relayClient *masqueH3.Client, c net.Conn, target string
 		if err != nil {
 			logger.Error("Failed to create UDP stream", "err", err)
 			fail(c)
-			c.Close()
+			if err := c.Close(); err != nil {
+				logger.Error("Failed to close c", "err", err)
+			}
 			return nil, err
 		}
 	}

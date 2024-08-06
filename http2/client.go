@@ -480,7 +480,9 @@ loop:
 		}
 	}
 
-	udp.doClose()
+	if err := udp.doClose(); err != nil {
+		c.logger.Error("Error from udp.doClose in encodeLoopUDP", "err", err)
+	}
 }
 
 // decodeLoopUDP decodes data received from the proxied UDP stream.
@@ -520,7 +522,9 @@ loop:
 		}
 	}
 
-	udp.doClose()
+	if err := udp.doClose(); err != nil {
+		c.logger.Error("Error from udp.doClose in decodeLoopUDP", "err", err)
+	}
 }
 
 // CreateUDPStream creates a UDP stream to the given address using the client.
@@ -565,7 +569,9 @@ func (c *Client) CreateUDPStream(addr string) (*Conn, error) {
 	resp, err := http.ReadResponse(br, nil)
 
 	if err != nil {
-		tr.Close()
+		if err := tr.Close(); err != nil {
+			c.logger.Error("Error from tr.Close", "err", err)
+		}
 		return nil, fmt.Errorf("reading HTTP response from CONNECT-UDP to %s via proxy %s failed: %v",
 			addr, c.proxyAddr, err)
 	}

@@ -69,7 +69,9 @@ func handleConnectMasque(c net.Conn, req *http.Request, logger *slog.Logger) *ma
 		if err != nil {
 			logger.Error("Error calling disallowedRes.Write", "err", err)
 		}
-		c.Close()
+		if err := c.Close(); err != nil {
+			logger.Error("Error closing c", "err", err)
+		}
 		return nil
 	}
 
@@ -80,7 +82,9 @@ func handleConnectMasque(c net.Conn, req *http.Request, logger *slog.Logger) *ma
 		if err != nil {
 			logger.Error("Error calling disallowedRes.Write", "err", err)
 		}
-		c.Close()
+		if err := c.Close(); err != nil {
+			logger.Error("Error closing c", "err", err)
+		}
 		return nil
 	}
 
@@ -90,7 +94,9 @@ func handleConnectMasque(c net.Conn, req *http.Request, logger *slog.Logger) *ma
 		if err != nil {
 			logger.Error("Error calling disallowedRes.Write", "err", err)
 		}
-		c.Close()
+		if err := c.Close(); err != nil {
+			logger.Error("Error closing c", "err", err)
+		}
 		return nil
 	}
 
@@ -101,7 +107,9 @@ func handleConnectMasque(c net.Conn, req *http.Request, logger *slog.Logger) *ma
 		if err != nil {
 			logger.Error("Error calling disallowedRes.Write", "err", err)
 		}
-		c.Close()
+		if err := c.Close(); err != nil {
+			logger.Error("Error closing c", "err", err)
+		}
 		return nil
 	}
 
@@ -132,7 +140,9 @@ func handleReq(c net.Conn, logger *slog.Logger) {
 			if err != nil {
 				logger.Error("Error calling response.Write", "err", err)
 			}
-			c.Close()
+			if err := c.Close(); err != nil {
+				logger.Error("Error closing c", "err", err)
+			}
 			return
 		}
 
@@ -147,7 +157,9 @@ func handleReq(c net.Conn, logger *slog.Logger) {
 			if err != nil {
 				logger.Error("Error calling response.Write", "err", err)
 			}
-			c.Close()
+			if err := c.Close(); err != nil {
+				logger.Error("Error closing c", "err", err)
+			}
 			return
 		}
 	}
@@ -166,8 +178,16 @@ func handleReq(c net.Conn, logger *slog.Logger) {
 		}
 
 		if masqueConn := handleConnectMasque(c, req, logger); masqueConn != nil {
-			defer c.Close()
-			defer masqueConn.Close()
+			defer func() {
+				if err := c.Close(); err != nil {
+					logger.Error("Error closing c", "err", err)
+				}
+			}()
+			defer func() {
+				if err := masqueConn.Close(); err != nil {
+					logger.Error("Error closing masqueConn", "err", err)
+				}
+			}()
 			wg.Add(1)
 			go transfer(masqueConn, c, &wg, logger.WithGroup("connect-first-transfer"))
 			wg.Add(1)
@@ -184,8 +204,16 @@ func handleReq(c net.Conn, logger *slog.Logger) {
 		}
 
 		if masqueConn := handleConnectMasque(c, req, logger); masqueConn != nil {
-			defer c.Close()
-			defer masqueConn.Close()
+			defer func() {
+				if err := c.Close(); err != nil {
+					logger.Error("Error closing c", "err", err)
+				}
+			}()
+			defer func() {
+				if err := masqueConn.Close(); err != nil {
+					logger.Error("Error closing masqueConn", "err", err)
+				}
+			}()
 			// Replay the request to the masque connection.
 			err := req.Write(masqueConn)
 			if err != nil {
@@ -272,7 +300,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error in net.Listen: %v", err)
 	}
-	defer l.Close()
+	defer func() {
+		if err := l.Close(); err != nil {
+			logger.Error("Error closing l", "err", err)
+		}
+	}()
 
 	var certData []byte
 	if *certDataFile != "" {

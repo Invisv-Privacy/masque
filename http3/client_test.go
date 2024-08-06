@@ -135,17 +135,23 @@ func TestCreateUDPStream(t *testing.T) {
 	}
 
 	c, err := NewClient(config)
-	defer c.Close()
+	defer func() {
+		if err := c.Close(); err != nil {
+			logger.Warn("Error closing", "err", err)
+		}
+	}()
 	require.NoError(t, err, "NewClient")
 
 	dockerHostURL := fmt.Sprintf("%v:%v", containerGateway, udpListenPort)
 
 	udpConn, err := c.CreateUDPStream(dockerHostURL)
 	require.NoError(t, err, "CreateUDPStream")
-	defer udpConn.Close()
+	defer func() {
+		require.NoError(t, udpConn.Close(), "udpConn.Close()")
+	}()
 
 	_, err = udpConn.Write([]byte(expectedRequest))
-	require.NoError(t, err, "udpConn.Close")
+	require.NoError(t, err, "udpConn.Write")
 
 	var buf [512]byte
 	n, err := udpConn.Read(buf[0:])
@@ -173,11 +179,10 @@ func TestCreateTCPStream(t *testing.T) {
 	}
 
 	// Swap out the default test server listener with our custom one listening on 0.0.0.0
-	ts.Listener.Close()
+	require.NoError(t, ts.Listener.Close(), "ts.Listener.Close()")
 	ts.Listener = l
 	ts.StartTLS()
 	defer ts.Close()
-
 	log.Printf("Test server listening on: %v", ts.URL)
 
 	urlSplit := strings.Split(ts.URL, ":")
@@ -198,13 +203,19 @@ func TestCreateTCPStream(t *testing.T) {
 
 	c, err := NewClient(config)
 	require.NoError(t, err, "NewClient")
-	defer c.Close()
+	defer func() {
+		if err := c.Close(); err != nil {
+			logger.Warn("Error closing", "err", err)
+		}
+	}()
 
 	// host.docker.internal is a docker specific host mapping for the h2o container that resolves to our localhost
 	dockerHostURL := fmt.Sprintf("%v:%v", containerGateway, port)
 	conn, err := c.CreateTCPStream(dockerHostURL)
 	require.NoError(t, err, "CreateTCPStream")
-	defer conn.Close()
+	defer func() {
+		require.NoError(t, conn.Close(), "conn.Close()")
+	}()
 
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("https://%v", dockerHostURL), nil)
 	require.NoError(t, err, "http.NewRequest")
@@ -233,7 +244,10 @@ func TestCreateTCPStream(t *testing.T) {
 	response, err := httpClient.Do(req)
 	require.NoError(t, err, "httpClient.Do")
 
-	defer response.Body.Close()
+	defer func() {
+		require.NoError(t, response.Body.Close(), "response.Body.Close()")
+	}()
+
 	data, err := io.ReadAll(response.Body)
 	require.NoError(t, err, "io.ReadAll response body")
 

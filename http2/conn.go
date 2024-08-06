@@ -51,6 +51,7 @@ type Conn struct {
 }
 
 func (r *Conn) doClose() error {
+	var err error
 	defer r.cleanup(r.isTcp, r.sid)
 
 	if !r.alive {
@@ -60,7 +61,7 @@ func (r *Conn) doClose() error {
 	r.alive = false
 	// Close |r.IoOut| so that r.Read() returns immediately
 	if r.IoOut != nil {
-		r.IoOut.Close()
+		err = r.IoOut.Close()
 	}
 	// Close decode and encode loops for CONNECT-UDP stream
 	if r.connCancel != nil {
@@ -68,10 +69,10 @@ func (r *Conn) doClose() error {
 	}
 	// Close the underlying tls conn if it is CONNECT-UDP
 	if r.transport != nil {
-		r.transport.Close()
+		err = r.transport.Close()
 	}
 
-	return nil
+	return err
 }
 
 // Sid returns the unique stream ID of the Conn.
