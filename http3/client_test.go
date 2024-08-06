@@ -167,7 +167,8 @@ func TestCreateTCPStream(t *testing.T) {
 	ts := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "", r.Header.Get("Proxy-Authorization"), "Should not pass the auth token to the end target server")
 		assert.Equal(t, http.MethodGet, r.Method, "Request to the end target server should be a GET")
-		fmt.Fprintf(w, expectedResponse)
+		_, err := fmt.Fprintf(w, expectedResponse)
+		require.NoError(t, err, "fmt.Fprintf")
 	}))
 	ts.EnableHTTP2 = true
 	// We want to listen on 0.0.0.0 because the proxy container will be on a different non-localhost network.
