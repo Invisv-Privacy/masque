@@ -26,6 +26,7 @@ func initDisallowedPortsBitset() {
 	for _, port := range disallowedPorts {
 		disallowedPortsBitset[port] = true
 	}
+	disallowedPortsBitsetInitialized = true
 }
 
 // IsDisallowedPort returns true if the given destination port number is a value that will be rejected by Fastly.
